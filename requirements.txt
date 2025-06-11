@@ -1,0 +1,13 @@
+# Core async libraries
+asyncpg==0.28.0
+playwright==1.39.0
+nest-asyncio==1.5.8
+
+# Standard libraries (no need to specify versions)
+# asyncio is part of the standard library in Python 3.7+
+
+# SSL support
+pyopenssl==23.2.0
+
+# Progress bars (optional but helpful)
+tqdm==4.66.1
