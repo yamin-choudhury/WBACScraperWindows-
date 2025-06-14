@@ -1,5 +1,6 @@
 """
 Main process manager for handling batch processing and single plate testing
+Enhanced with robust retry mechanism for processing ~4000 valuations reliably
 """
 import asyncio
 import platform
@@ -11,6 +12,9 @@ from .database_utils import (
     connect_to_database, insert_failure, verify_record_exists,
     fetch_valuations_to_process, insert_valuation
 )
+
+# Import the retry mechanism
+from .retry_manager import process_all_entries_with_retry, retry_stats
 
 # Import the appropriate valuation module based on platform
 IS_WINDOWS = platform.system() == 'Windows'
@@ -25,11 +29,42 @@ else:
 
 async def process_all_entries():
     """
-    Process all entries in the to_valuate table and update respective tables
-    with results.
+    ENHANCED: Process all entries using the robust retry mechanism.
+    This function now delegates to the retry_manager for reliable batch processing.
+    """
+    print("=== STARTING ROBUST WBAC BATCH PROCESSING ===")
+    print("Using enhanced retry mechanism with multi-layered resilience")
+    
+    try:
+        # Use the enhanced retry mechanism
+        success_count, failure_count = await process_all_entries_with_retry()
+        
+        # Additional summary
+        total_processed = success_count + failure_count
+        success_rate = (success_count / max(1, total_processed)) * 100
+        
+        print(f"\n=== BATCH PROCESSING COMPLETE ===")
+        print(f"Entries processed: {total_processed}")
+        print(f"Success rate: {success_rate:.1f}%")
+        print(f"Retry statistics:")
+        print(f"  - Browser retries: {retry_stats.browser_retries}")
+        print(f"  - Batch retries: {retry_stats.batch_retries}")
+        print(f"  - Browsers recycled: {retry_stats.browsers_recycled}")
+        
+        return success_count, failure_count
+        
+    except Exception as e:
+        print(f"Critical error in enhanced batch processing: {str(e)}")
+        traceback.print_exc()
+        return 0, 0
+
+async def process_all_entries_legacy():
+    """
+    LEGACY: Original process_all_entries function kept for reference.
+    Use process_all_entries() for the enhanced version with retry mechanism.
     """
     start_time = datetime.now()
-    print(f"Starting WBAC valuation process at {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Starting LEGACY WBAC valuation process at {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     
     conn = None
     success_count = 0
